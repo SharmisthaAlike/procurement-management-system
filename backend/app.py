@@ -2,7 +2,11 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import sqlite3
 import pandas as pd
-from ml_models import forecast_material_demand, get_kpis, supplier_reliability_data
+from ml_models import (
+    forecast_material_demand, get_kpis, supplier_reliability_data,
+    calculate_supplier_reliability_scores, predict_delay_probability,
+    get_procurement_alerts
+)
 import os
 
 app = Flask(__name__)
@@ -107,6 +111,60 @@ def delete_supplier_route(id):
         return jsonify({"success": True}), 200
     except sqlite3.IntegrityError:
         return jsonify({"error": "Cannot delete supplier. They have active Purchase Orders."}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/suppliers/ranking', methods=['GET'])
+def get_supplier_ranking():
+    """
+    Returns suppliers ranked by reliability score (highest to lowest).
+    Each supplier includes:
+    - reliability_score (0-100)
+    - otif (on-time in-full %)
+    - avg_lead_time_days
+    - defect_rate (%)
+    - cost_efficiency
+    """
+    try:
+        suppliers = calculate_supplier_reliability_scores()
+        return jsonify(suppliers)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/predict/delay/<int:supplier_id>', methods=['GET'])
+def predict_delay_route(supplier_id):
+    """
+    Predicts delay probability for a supplier.
+    Optional query param: ?material_id=<id>
+    
+    Returns: {
+        "supplier_id": int,
+        "material_id": int or null,
+        "delay_probability": float (0-100),
+        "risk_level": "LOW" | "MEDIUM" | "HIGH",
+        "reasoning": str
+    }
+    """
+    try:
+        material_id = request.args.get('material_id', type=int)
+        prediction = predict_delay_probability(supplier_id, material_id)
+        return jsonify(prediction)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/alerts', methods=['GET'])
+def get_alerts_route():
+    """
+    Returns active procurement risk alerts.
+    
+    Alert types:
+    - LOW_RELIABILITY: Supplier score < 60
+    - HIGH_DELAY_RISK: Predicted delay probability > threshold
+    - LOW_STOCK: Material below minimum threshold
+    """
+    try:
+        alerts = get_procurement_alerts()
+        return jsonify(alerts)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
