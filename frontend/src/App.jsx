@@ -444,11 +444,11 @@ function App() {
             </div>
           </div>
         </div>
-      </div>
 
-      <SupplierLeaderboard suppliers={supplierRankings} />
-    </div>
-  );
+        <SupplierLeaderboard suppliers={supplierRankings} />
+      </div>
+    );
+  };
 
   /* ══════════════════════════════════════════════════════════════════
      PURCHASE ORDERS VIEW

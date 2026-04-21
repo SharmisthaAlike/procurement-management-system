@@ -317,8 +317,6 @@ def download_sample_csv(table_name):
         headers={"Content-Disposition": f"attachment; filename=sample_{table_name}.csv"}
     )
 
->>>>>>> 0da7d23e0eeb64b9f22b620a8a8fdb71f866faa6
-
 if __name__ == '__main__':
     from waitress import serve
     print("Starting Procurement API on port 5001...")
