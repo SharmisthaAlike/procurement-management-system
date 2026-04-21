@@ -3,11 +3,13 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
   LineChart, Line, ScatterChart, Scatter, ZAxis
 } from 'recharts';
-import { Truck, AlertTriangle, DollarSign, Activity, LayoutDashboard, Package, Users } from 'lucide-react';
+import { Truck, AlertTriangle, DollarSign, Activity, LayoutDashboard, Package, Users, Trophy } from 'lucide-react';
 import './index.css';
 
 import DataListView from './components/DataListView';
 import DataFormModal from './components/DataFormModal';
+import AlertsBanner from './components/AlertsBanner';
+import SupplierLeaderboard from './components/SupplierLeaderboard';
 
 const API_BASE = 'http://localhost:5001/api';
 
@@ -17,6 +19,8 @@ function App() {
   const [kpis, setKpis] = useState({});
   const [materials, setMaterials] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [supplierRankings, setSupplierRankings] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [selectedMaterial, setSelectedMaterial] = useState('');
   const [forecast, setForecast] = useState(null);
   
@@ -36,19 +40,25 @@ function App() {
   const fetchData = async () => {
     setLoading(true);
     try {
-        const [kpiRes, matRes, supRes] = await Promise.all([
+        const [kpiRes, matRes, supRes, rankRes, alertRes] = await Promise.all([
           fetch(`${API_BASE}/kpis`),
           fetch(`${API_BASE}/materials`),
-          fetch(`${API_BASE}/suppliers`)
+          fetch(`${API_BASE}/suppliers`),
+          fetch(`${API_BASE}/suppliers/ranking`),
+          fetch(`${API_BASE}/alerts`)
         ]);
         
         const kpiData = await kpiRes.json();
         const matData = await matRes.json();
         const supData = await supRes.json();
+        const rankData = await rankRes.json();
+        const alertData = await alertRes.json();
 
         setKpis(kpiData);
         setMaterials(matData);
         setSuppliers(supData);
+        setSupplierRankings(Array.isArray(rankData) ? rankData : []);
+        setAlerts(Array.isArray(alertData) ? alertData : []);
         
         if (matData.length > 0 && !selectedMaterial) {
             setSelectedMaterial(matData[0].MaterialID);
@@ -142,6 +152,8 @@ function App() {
         </div>
       </header>
 
+      <AlertsBanner alerts={alerts} />
+
       <div className="kpi-grid animate-fade-in delay-2">
         <KPI CardTitle="OTIF Delivery Rate" Value={`${kpis.otif_rate}%`} Icon={Truck} col="var(--accent-blue)" />
         <KPI CardTitle="Average Lead Time" Value={`${kpis.avg_lead_time_days} days`} Icon={Activity} col="var(--accent-purple)" />
@@ -207,6 +219,20 @@ function App() {
             </div>
         </div>
       </div>
+
+      <SupplierLeaderboard suppliers={supplierRankings} />
+    </div>
+  );
+
+  const renderLeaderboard = () => (
+    <div className="dashboard-container">
+      <header className="animate-fade-in delay-1">
+        <div className="title-group">
+          <h1>Supplier Performance Leaderboard</h1>
+          <p>Ranked by reliability score across all procurement metrics</p>
+        </div>
+      </header>
+      <SupplierLeaderboard suppliers={supplierRankings} />
     </div>
   );
 
@@ -217,6 +243,9 @@ function App() {
         <div className="sidebar-brand">Procurement OS</div>
         <button className={`nav-item ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')}>
           <LayoutDashboard size={20} /> Dashboard
+        </button>
+        <button className={`nav-item ${currentView === 'leaderboard' ? 'active' : ''}`} onClick={() => setCurrentView('leaderboard')}>
+          <Trophy size={20} /> Leaderboard
         </button>
         <button className={`nav-item ${currentView === 'materials' ? 'active' : ''}`} onClick={() => setCurrentView('materials')}>
           <Package size={20} /> Raw Materials
@@ -229,6 +258,7 @@ function App() {
       {/* Main Content Area */}
       <main className="main-content">
         {currentView === 'dashboard' && renderDashboard()}
+        {currentView === 'leaderboard' && renderLeaderboard()}
         
         {currentView === 'materials' && (
            <DataListView 
